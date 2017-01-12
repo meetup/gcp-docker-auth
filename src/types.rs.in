@@ -1,0 +1,69 @@
+#[derive(Debug, Serialize, Default)]
+pub struct Header {
+    pub alg: String,
+    pub typ: String,
+}
+
+#[derive(Debug, Serialize, Default)]
+pub struct Claims {
+    pub iss: String,
+    pub scope: String,
+    pub aud: String,
+    pub iat: i64,
+    pub exp: u32,
+}
+
+#[derive(Debug, Clone, Default, Deserialize)]
+pub struct Token {
+    pub access_token: String,
+    pub token_type: Option<String>,
+    pub refresh_token: Option<String>,
+    pub expires_in: Option<usize>,
+}
+
+#[derive(Debug, Clone, Default, Deserialize)]
+pub struct ServiceAccountCredentials {
+    #[serde(rename="type")]
+    pub _type: String,
+    pub project_id: String,
+    pub private_key_id: String,
+    pub private_key: String,
+    pub client_email: String,
+    pub client_id: String,
+    pub auth_uri: String,
+    pub token_uri: String,
+    pub auth_provider_x509_cert_url: String,
+    pub client_x509_cert_url: String,
+}
+
+#[derive(Debug, Clone, Default, Deserialize)]
+pub struct InstanceAggregatedList {
+    pub items: BTreeMap<String, InstanceList>,
+}
+
+#[derive(Debug, Clone, Default, Deserialize)]
+pub struct InstanceList {
+    #[serde(default)]
+    pub instances: Vec<Instance>,
+}
+
+#[derive(Debug, Clone, Default, Deserialize)]
+pub struct Instance {
+   pub name: String,
+   pub status: String,
+    #[serde(rename="networkInterfaces")]
+    pub network_interfaces: Vec<NetworkInterface>,
+}
+
+#[derive(Debug, Clone, Default, Deserialize)]
+pub struct NetworkInterface {
+    #[serde(rename="accessConfigs")]
+    pub access_configs: Vec<AccessConfig>,
+}
+
+#[derive(Debug, Clone, Default, Deserialize)]
+pub struct AccessConfig {
+    pub name: String,
+    #[serde(rename="natIP")]
+    pub nat_ip: String,
+}
