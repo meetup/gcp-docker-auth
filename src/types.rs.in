@@ -1,3 +1,23 @@
+
+/// see [this](https://github.com/cesanta/docker_auth/blob/master/auth_server/authz/authz.go#L37-L45) for more information
+#[derive(Debug, Deserialize, Default)]
+pub struct AuthRequestInfo {
+  #[serde(rename="Account")]
+  pub account: String,
+  #[serde(rename="Type")]
+  pub _type: String,
+  #[serde(rename="Name")]
+  pub name: String,
+  #[serde(rename="Service")]
+  pub service: String,
+  #[serde(rename="IP")]
+  pub ip: String,
+  #[serde(rename="Actions")]
+  pub actions: Vec<String>,
+  #[serde(rename="Labels")]
+  pub labels: BTreeMap<String, String>
+}
+
 #[derive(Debug, Serialize, Default)]
 pub struct Header {
     pub alg: String,
@@ -65,5 +85,6 @@ pub struct NetworkInterface {
 pub struct AccessConfig {
     pub name: String,
     #[serde(rename="natIP")]
-    pub nat_ip: String,
+    #[serde(default)]
+    pub nat_ip: Option<String>,
 }

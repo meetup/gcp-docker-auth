@@ -1,3 +1,7 @@
+#[macro_use]
+extern crate log;
+extern crate env_logger;
+extern crate atty;
 extern crate hyper;
 extern crate base64;
 extern crate crypto;
@@ -6,22 +10,24 @@ extern crate serde;
 extern crate openssl;
 extern crate url;
 
+use atty::Stream;
 use hyper::Client;
 use hyper::header::{Authorization, ContentType};
 use openssl::crypto::pkey::PKey;
 use openssl::crypto::hash::hash;
 use openssl::crypto::hash::Type::SHA256;
 use std::env;
-use std::io::Read;
+use std::io::{self, Read};
 use std::time;
 use std::time::{Duration, SystemTime};
 use std::ops::Add;
 use url::form_urlencoded;
 
 mod types;
-use types::{Token, Claims, Header, ServiceAccountCredentials, InstanceAggregatedList};
+use types::{AuthRequestInfo, Token, Claims, Header, ServiceAccountCredentials,
+            InstanceAggregatedList};
 
-
+const COMPUTE_RO_SCOPE: &'static str = "https://www.googleapis.com/auth/compute.readonly";
 
 fn instances(token: Token, project: &str) -> InstanceAggregatedList {
     let mut res = Client::new()
@@ -32,8 +38,7 @@ fn instances(token: Token, project: &str) -> InstanceAggregatedList {
         .unwrap();
     let mut buf = String::new();
     res.read_to_string(&mut buf).unwrap();
-    // println!("{}", buf);
-    // todo: handle invalid project name
+    // todo: handle invalid project name and other errors
     serde_json::from_str::<InstanceAggregatedList>(&buf).unwrap()
 }
 
@@ -83,37 +88,52 @@ fn token(pk: String, email: String, scopes: Vec<String>) -> Token {
     serde_json::from_str::<Token>(&buf).unwrap()
 }
 
-fn main() {
-    match (env::var("GCP_CREDENTIALS"), env::var("GCP_PROJECTS")) {
-        (Ok(credentials), Ok(projects)) => {
-            match serde_json::from_str::<ServiceAccountCredentials>(&credentials) {
-                Ok(credentials) => {
-                    println!("loaded credentials for {}", credentials.client_email);
-                    let token = token(credentials.private_key,
-                                      credentials.client_email,
-                                      vec![String::from("https://www.googleapis.\
-                                                         com/auth/compute.readonly")]);
-                    for project in projects.split(",") {
-                        println!("{} project instances", project);
-                        for (k, instances) in instances(token.clone(), project).items {
-                            println!("region: {}", k);
-                            for inst in instances.instances {
-                                let ips = inst.network_interfaces
-                                    .iter()
-                                    .fold(vec![], |mut acc, interface| {
-                                        for cfg in interface.clone().access_configs {
-                                            acc.push(cfg.nat_ip)
-                                        }
-                                        acc
-                                    });
-                                println!("  {} ({})", ips.join(" "), inst.name);
-                            }
+
+fn run(credentials_json: String, projects: Vec<&str>) {
+    match serde_json::from_str::<ServiceAccountCredentials>(&credentials_json) {
+        Ok(credentials) => {
+            let auth_request = if atty::isnt(Stream::Stdin) {
+                Some(serde_json::de::from_reader::<io::Stdin, AuthRequestInfo>(io::stdin())
+                    .unwrap())
+            } else {
+                None
+            };
+            debug!("auth request {:?}", auth_request);
+            debug!("loaded credentials for {}", credentials.client_email);
+            let token = token(credentials.private_key,
+                              credentials.client_email,
+                              vec![String::from(COMPUTE_RO_SCOPE)]);
+            for project in projects {
+                debug!("{} project instances", project);
+                for (k, instances) in instances(token.clone(), project).items {
+                    debug!("region: {}", k);
+                    for inst in instances.instances {
+                        let ips = inst.network_interfaces
+                            .iter()
+                            .fold(vec![], |mut acc, interface| {
+                                for cfg in interface.clone().access_configs {
+                                    if let Some(ip) = cfg.nat_ip {
+                                        acc.push(ip)
+                                    }
+                                }
+                                acc
+                            });
+                        debug!("{}", inst.name);
+                        for ip in ips {
+                            println!("{}", ip)
                         }
                     }
                 }
-                Err(err) => println!("failed to parse credentials: {}", err),
             }
         }
+        Err(err) => println!("failed to parse credentials: {}", err),
+    }
+}
+
+fn main() {
+    env_logger::init().unwrap();
+    match (env::var("GCP_CREDENTIALS"), env::var("GCP_PROJECTS")) {
+        (Ok(credentials), Ok(projects)) => run(credentials, projects.split(",").collect()),
         _ => (),
     }
 }
