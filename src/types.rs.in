@@ -2,19 +2,19 @@
 /// see [this](https://github.com/cesanta/docker_auth/blob/master/auth_server/authz/authz.go#L37-L45) for more information
 #[derive(Debug, Deserialize, Default)]
 pub struct AuthRequestInfo {
-  #[serde(rename="Account")]
+  #[serde(rename="Account", default)]
   pub account: String,
-  #[serde(rename="Type")]
+  #[serde(rename="Type", default)]
   pub _type: String,
-  #[serde(rename="Name")]
+  #[serde(rename="Name", default)]
   pub name: String,
-  #[serde(rename="Service")]
+  #[serde(rename="Service", default)]
   pub service: String,
-  #[serde(rename="IP")]
+  #[serde(rename="IP", default)]
   pub ip: String,
-  #[serde(rename="Actions")]
+  #[serde(rename="Actions", default)]
   pub actions: Vec<String>,
-  #[serde(rename="Labels")]
+  #[serde(rename="Labels", default)]
   pub labels: BTreeMap<String, String>
 }
 
@@ -54,6 +54,16 @@ pub struct ServiceAccountCredentials {
     pub token_uri: String,
     pub auth_provider_x509_cert_url: String,
     pub client_x509_cert_url: String,
+}
+
+#[derive(Debug, Clone, Default, Deserialize)]
+pub struct GcpErrors {
+  pub error: GcpError
+}
+
+#[derive(Debug, Clone, Default, Deserialize)]
+pub struct GcpError {
+  pub message: String
 }
 
 #[derive(Debug, Clone, Default, Deserialize)]
